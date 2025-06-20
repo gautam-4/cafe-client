@@ -1,11 +1,11 @@
 @import "tailwindcss";
 
 :root {
-  --cozy-lemon: #EFC94C;          /* Richer golden lemon */
-  --cozy-lemon-light: #F6E27F;    /* Soft warm highlight */
-  --cozy-lemon-bg: #FFFDF5;       /* Creamy café background */
-  --cozy-lemon-dark: #C9A227;     /* Muted golden-brown for contrast */
-  --cozy-lemon-accent: #FAF3DC;   /* Subtle warm accent */
+  --cozy-lemon: #ffe373;          /* Soft golden lemon */
+  --cozy-lemon-light: #FCF3CF;    /* Very light highlight */
+  --cozy-lemon-bg: #FFFEF8;       /* Almost white with a warm tint */
+  --cozy-lemon-dark: #D4AC0D;     /* Slightly deeper golden for text */
+  --cozy-lemon-accent: #FBF6E3;   /* Pale buttery accent */
 }
 
 @theme inline {
