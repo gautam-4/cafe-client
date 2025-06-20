@@ -2,20 +2,22 @@
 
 export default function QuantityControl({ quantity, onDecrease, onIncrease }) {
   return (
-    <div className="flex items-center space-x-2">
+    <div className="inline-flex items-center rounded-md border border-gray-300 overflow-hidden">
       <button
         onClick={onDecrease}
-        className="w-8 h-8 rounded-md bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-gray-600 font-medium transition-colors"
+        className="px-2.5 py-1 text-sm font-bold text-gray-700 hover:bg-gray-100"
       >
         −
       </button>
-      <span className="font-medium text-gray-800 min-w-[24px] text-center">
+
+      <span className="px-2.5 py-1 text-sm font-medium text-gray-800">
         {quantity}
       </span>
+
       <button
         onClick={onIncrease}
-        className="w-8 h-8 rounded-md flex items-center justify-center text-gray-800 font-medium transition-colors hover:opacity-90"
-        style={{ backgroundColor: 'var(--cozy-lemon)' }}
+        className="px-2.5 py-1 text-sm font-bold text-gray-800 hover:bg-yellow-100"
+        style={{ backgroundColor: 'var(--cozy-lemon)', color: '#333' }}
       >
         +
       </button>

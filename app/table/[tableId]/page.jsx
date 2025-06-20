@@ -17,12 +17,12 @@ const MENU_DATA = {
     ]},
   ],
   mains: [
-    { id: 3, name: 'Margherita Pizza', price: 250, customizable: true, options: [
+    { id: 3, name: 'Peppy Paneer Pizza', price: 250, customizable: true, options: [
       { id: 'small', label: 'Small (8")', price: 250 },
       { id: 'medium', label: 'Medium (12")', price: 300 },
       { id: 'large', label: 'Large (16")', price: 350 }
-    ]},
-    { id: 4, name: 'Grilled Chicken', price: 250, customizable: false },
+    ], description: 'cheese, paneer, paprika'},
+    { id: 4, name: 'Grilled Chicken', price: 250, customizable: false, isVeg: false },
     { id: 5, name: 'Pasta', price: 200, customizable: true, options: [
       { id: 'alfredo', label: 'Alfredo', price: 200 },
       { id: 'full', label: 'Full Portion', price: 300 }
