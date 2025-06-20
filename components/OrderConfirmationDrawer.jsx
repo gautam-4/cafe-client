@@ -6,6 +6,7 @@ export default function OrderConfirmationDrawer({ isOpen, onClose, onSubmitOrder
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
+    countryCode: '+91',
     tableNumber: tableId || '',
     specialInstructions: ''
   });
@@ -18,17 +19,11 @@ export default function OrderConfirmationDrawer({ isOpen, onClose, onSubmitOrder
     if (!formData.name.trim()) {
       newErrors.name = 'Name is required';
     }
-    
-    if (!formData.phone.trim()) {
-      newErrors.phone = 'Phone number is required';
-    } else if (!/^\d{10}$/.test(formData.phone.replace(/\D/g, ''))) {
-      newErrors.phone = 'Please enter a valid 10-digit phone number';
-    }
-    
+
     if (!formData.tableNumber.trim()) {
       newErrors.tableNumber = 'Table number is required';
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -38,8 +33,7 @@ export default function OrderConfirmationDrawer({ isOpen, onClose, onSubmitOrder
       ...prev,
       [field]: value
     }));
-    
-    // Clear error when user starts typing
+
     if (errors[field]) {
       setErrors(prev => ({
         ...prev,
@@ -50,26 +44,32 @@ export default function OrderConfirmationDrawer({ isOpen, onClose, onSubmitOrder
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
-    
+
+    if (!validateForm()) return;
+
     setIsSubmitting(true);
-    
+
+    const fullPhoneNumber = formData.phone
+      ? `${formData.countryCode}${formData.phone.replace(/\D/g, '')}`
+      : '';
+
     try {
-      await onSubmitOrder(formData);
-      // Reset form
+      await onSubmitOrder({
+        ...formData,
+        fullPhoneNumber
+      });
+
       setFormData({
         name: '',
         phone: '',
+        countryCode: '+91',
         tableNumber: tableId || '',
         specialInstructions: ''
       });
+
       onClose();
     } catch (error) {
       console.error('Order submission failed:', error);
-      // Handle error (could show a toast notification)
     } finally {
       setIsSubmitting(false);
     }
@@ -91,7 +91,7 @@ export default function OrderConfirmationDrawer({ isOpen, onClose, onSubmitOrder
   if (!isOpen) return null;
 
   return (
-    <div 
+    <div
       className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
       onClick={handleBackdropClick}
     >
@@ -132,24 +132,37 @@ export default function OrderConfirmationDrawer({ isOpen, onClose, onSubmitOrder
             )}
           </div>
 
-          {/* Phone Field */}
+          {/* Phone with Country Code Dropdown */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Phone Number *
+              Phone Number (Optional)
             </label>
-            <input
-              type="tel"
-              value={formData.phone}
-              onChange={(e) => handleInputChange('phone', formatPhoneNumber(e.target.value))}
-              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 ${
-                errors.phone ? 'border-red-500' : 'border-gray-300'
-              }`}
-              placeholder="123-456-7890"
-              disabled={isSubmitting}
-            />
-            {errors.phone && (
-              <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
-            )}
+            <div className="flex space-x-2">
+              <select
+                value={formData.countryCode}
+                onChange={(e) => handleInputChange('countryCode', e.target.value)}
+                className="px-2 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 bg-white"
+                disabled={isSubmitting}
+              >
+                <option value="+91">🇮🇳 +91</option>
+                <option value="+1">🇺🇸 +1</option>
+                <option value="+44">🇬🇧 +44</option>
+                <option value="+61">🇦🇺 +61</option>
+                <option value="+81">🇯🇵 +81</option>
+                <option value="+971">🇦🇪 +971</option>
+                <option value="other">other</option>
+                {/* Add more if needed */}
+              </select>
+
+              <input
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => handleInputChange('phone', formatPhoneNumber(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                placeholder="123-456-7890"
+                disabled={isSubmitting}
+              />
+            </div>
           </div>
 
           {/* Table Number Field */}
