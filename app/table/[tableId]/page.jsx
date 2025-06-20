@@ -153,7 +153,7 @@ export default function TablePage() {
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
-      <div className="px-4 py-6 text-center flex justify-between" style={{ backgroundColor: 'var(--cozy-lemon)' }}>
+      <div className="px-4 py-5 text-center flex justify-between" style={{ backgroundColor: 'var(--cozy-lemon)' }}>
         <h1 className="text-2xl font-bold text-gray-800">Menu</h1>
         <p className="text-gray-700 mt-1">Table {tableId}</p>
       </div>
