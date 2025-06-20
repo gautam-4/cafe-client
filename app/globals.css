@@ -1,8 +1,11 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --cozy-lemon: #EFC94C;          /* Richer golden lemon */
+  --cozy-lemon-light: #F6E27F;    /* Soft warm highlight */
+  --cozy-lemon-bg: #FFFDF5;       /* Creamy café background */
+  --cozy-lemon-dark: #C9A227;     /* Muted golden-brown for contrast */
+  --cozy-lemon-accent: #FAF3DC;   /* Subtle warm accent */
 }
 
 @theme inline {
