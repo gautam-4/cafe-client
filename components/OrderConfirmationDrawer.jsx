@@ -135,7 +135,7 @@ export default function OrderConfirmationDrawer({ isOpen, onClose, onSubmitOrder
           {/* Phone with Country Code Dropdown */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Phone Number (Optional)
+              Phone Number
             </label>
             <div className="flex space-x-2">
               <select
@@ -159,7 +159,7 @@ export default function OrderConfirmationDrawer({ isOpen, onClose, onSubmitOrder
                 value={formData.phone}
                 onChange={(e) => handleInputChange('phone', formatPhoneNumber(e.target.value))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                placeholder="123-456-7890"
+                placeholder="Phone number"
                 disabled={isSubmitting}
               />
             </div>
@@ -188,7 +188,7 @@ export default function OrderConfirmationDrawer({ isOpen, onClose, onSubmitOrder
           {/* Special Instructions Field */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Special Instructions (Optional)
+              Special Instructions
             </label>
             <textarea
               value={formData.specialInstructions}
