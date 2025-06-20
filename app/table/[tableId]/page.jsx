@@ -37,10 +37,73 @@ const MENU_DATA = {
   ]
 };
 
+// Custom hook for persistent cart state
+function usePersistedCart(tableId) {
+  const [cart, setCart] = useState({});
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // Generate unique storage key for each table
+  const storageKey = `cafe-cart-table-${tableId}`;
+
+  // Load cart from localStorage on component mount
+  useEffect(() => {
+    try {
+      const savedCart = localStorage.getItem(storageKey);
+      if (savedCart) {
+        const parsedCart = JSON.parse(savedCart);
+        // Validate the cart data structure
+        if (typeof parsedCart === 'object' && parsedCart !== null) {
+          setCart(parsedCart);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading cart from localStorage:', error);
+      // Clear corrupted data
+      localStorage.removeItem(storageKey);
+    } finally {
+      setIsLoaded(true);
+    }
+  }, [storageKey]);
+
+  // Save cart to localStorage whenever it changes
+  useEffect(() => {
+    if (isLoaded) {
+      try {
+        if (Object.keys(cart).length === 0) {
+          // Remove from localStorage if cart is empty
+          localStorage.removeItem(storageKey);
+        } else {
+          localStorage.setItem(storageKey, JSON.stringify(cart));
+        }
+      } catch (error) {
+        console.error('Error saving cart to localStorage:', error);
+      }
+    }
+  }, [cart, storageKey, isLoaded]);
+
+  const updateCart = (newCart) => {
+    setCart(newCart);
+  };
+
+  const clearCart = () => {
+    setCart({});
+    try {
+      localStorage.removeItem(storageKey);
+    } catch (error) {
+      console.error('Error clearing cart from localStorage:', error);
+    }
+  };
+
+  return [cart, updateCart, clearCart, isLoaded];
+}
+
 export default function TablePage() {
   const params = useParams();
   const tableId = params.tableId;
-  const [cart, setCart] = useState({});
+  
+  // Use the custom hook for persistent cart
+  const [cart, setCart, clearCart, isCartLoaded] = usePersistedCart(tableId);
+  
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
@@ -49,6 +112,8 @@ export default function TablePage() {
 
   // Calculate cart totals whenever cart changes
   useEffect(() => {
+    if (!isCartLoaded) return; // Don't calculate until cart is loaded
+    
     const allMenuItems = [
       ...MENU_DATA.drinks,
       ...MENU_DATA.mains,
@@ -64,7 +129,7 @@ export default function TablePage() {
     }, 0);
 
     setCartTotals({ totalItems, totalPrice });
-  }, [cart]);
+  }, [cart, isCartLoaded]);
 
   const handleAddItem = (item) => {
     if (item.customizable) {
@@ -129,26 +194,43 @@ export default function TablePage() {
   };
 
   const handleSubmitOrder = async (orderDetails) => {
-    // Here you would typically send the order to your backend API
-    const orderData = {
-      tableId,
-      customerInfo: orderDetails,
-      items: cart,
-      totals: cartTotals,
-      timestamp: new Date().toISOString()
-    };
+    try {
+      // Here you would typically send the order to your backend API
+      const orderData = {
+        tableId,
+        customerInfo: orderDetails,
+        items: cart,
+        totals: cartTotals,
+        timestamp: new Date().toISOString()
+      };
 
-    console.log('Submitting order:', orderData);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Clear cart after successful order
-    setCart({});
-    
-    // You could show a success message here
-    alert('Order submitted successfully! We\'ll prepare your order shortly.');
+      console.log('Submitting order:', orderData);
+      
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Clear cart after successful order
+      clearCart();
+      
+      // You could show a success message here
+      alert('Order submitted successfully! We\'ll prepare your order shortly.');
+    } catch (error) {
+      console.error('Error submitting order:', error);
+      alert('There was an error submitting your order. Please try again.');
+    }
   };
+
+  // Show loading state until cart is loaded
+  if (!isCartLoaded) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading menu...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white">
