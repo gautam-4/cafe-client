@@ -7,33 +7,35 @@ import CustomizationDrawer from '../../../components/CustomizationDrawer';
 import CartSummary from '../../../components/CartSummary';
 import CartDrawer from '../../../components/CartDrawer';
 import OrderConfirmationDrawer from '../../../components/OrderConfirmationDrawer';
+import OrderSuccessModal from '../../../components/OrderSuccessModal';
+import { createOrder, formatOrderForFirebase, validateOrderData } from '../../../lib/orderService';
 
 const MENU_DATA = {
   drinks: [
-    { id: 1, name: 'Cold Coffee', price: 150, customizable: false },
-    { id: 2, name: 'Iced Tea', price:100, customizable: true, options: [
+    { id: 1, name: 'Cold Coffee', price: 150, customizable: false, category: 'drinks' },
+    { id: 2, name: 'Iced Tea', price:100, customizable: true, category: 'drinks', options: [
         {id: 'lemon', label: 'Lemon', price: 100},
         {id: 'peach', label: 'Peach', price: 100}
     ]},
   ],
   mains: [
-    { id: 3, name: 'Peppy Paneer Pizza', price: 250, customizable: true, options: [
+    { id: 3, name: 'Peppy Paneer Pizza', price: 250, customizable: true, category: 'mains', options: [
       { id: 'small', label: 'Small (8")', price: 250 },
       { id: 'medium', label: 'Medium (12")', price: 300 },
       { id: 'large', label: 'Large (16")', price: 350 }
     ], description: 'cheese, paneer, paprika'},
-    { id: 4, name: 'Grilled Chicken', price: 250, customizable: false, isVeg: false },
-    { id: 5, name: 'Pasta', price: 200, customizable: true, options: [
+    { id: 4, name: 'Grilled Chicken', price: 250, customizable: false, isVeg: false, category: 'mains' },
+    { id: 5, name: 'Pasta', price: 200, customizable: true, category: 'mains', options: [
       { id: 'alfredo', label: 'Alfredo', price: 200 },
       { id: 'full', label: 'Full Portion', price: 300 }
     ]}
   ],
   desserts: [
-    { id: 6, name: 'Chocolate Cake', price: 150, customizable: true, options: [
+    { id: 6, name: 'Chocolate Cake', price: 150, customizable: true, category: 'desserts', options: [
       { id: 'slice', label: 'Single Slice', price: 150 },
       { id: 'double', label: 'Double Slice', price: 200 }
     ]},
-    { id: 7, name: 'Ice Cream', price: 150, customizable: false }
+    { id: 7, name: 'Ice Cream', price: 150, customizable: false, category: 'desserts' }
   ]
 };
 
@@ -108,8 +110,11 @@ export default function TablePage() {
   const [selectedItem, setSelectedItem] = useState(null);
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
   const [orderConfirmationOpen, setOrderConfirmationOpen] = useState(false);
+  const [orderSuccessOpen, setOrderSuccessOpen] = useState(false);
   const [cartTotals, setCartTotals] = useState({ totalItems: 0, totalPrice: 0 });
-  const [isIncreasing, setIsIncreasing] = useState(false); // New state to track if we're increasing quantity
+  const [isIncreasing, setIsIncreasing] = useState(false);
+  const [orderDetails, setOrderDetails] = useState(null);
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
 
   // Calculate cart totals whenever cart changes
   useEffect(() => {
@@ -289,36 +294,62 @@ export default function TablePage() {
     setCartDrawerOpen(true);
   };
 
+  // Updated to properly handle the cart data and open order confirmation
   const handleConfirmOrder = () => {
     setCartDrawerOpen(false);
     setOrderConfirmationOpen(true);
   };
 
-  const handleSubmitOrder = async (orderDetails) => {
+  // Updated to handle the actual order submission
+  const handleSubmitOrder = async (customerDetails) => {
+    if (isSubmittingOrder) return; // Prevent double submission
+    
+    setIsSubmittingOrder(true);
+    
     try {
-      // Here you would typically send the order to your backend API
-      const orderData = {
-        tableId,
-        customerInfo: orderDetails,
-        items: cart,
-        totals: cartTotals,
-        timestamp: new Date().toISOString()
-      };
-
-      console.log('Submitting order:', orderData);
+      // Format order data for Firebase
+      const orderData = formatOrderForFirebase(cart, customerDetails, MENU_DATA);
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Validate order data
+      const validation = validateOrderData(orderData);
+      if (!validation.isValid) {
+        throw new Error(validation.errors.join(', '));
+      }
+
+      // Submit order to Firebase
+      const orderId = await createOrder(orderData);
+      
+      // Prepare success modal data
+      const successData = {
+        orderId,
+        orderNumber: orderData.orderNumber,
+        customerName: orderData.customer.name,
+        tableNumber: orderData.tableNumber,
+        totalItems: orderData.totalItems,
+        totalPrice: orderData.totalPrice,
+        estimatedTime: orderData.estimatedTime
+      };
+      
+      setOrderDetails(successData);
+      
+      // Close confirmation drawer and show success modal
+      setOrderConfirmationOpen(false);
+      setOrderSuccessOpen(true);
       
       // Clear cart after successful order
       clearCart();
       
-      // You could show a success message here
-      alert('Order submitted successfully! We\'ll prepare your order shortly.');
     } catch (error) {
       console.error('Error submitting order:', error);
-      alert('There was an error submitting your order. Please try again.');
+      alert(`There was an error submitting your order: ${error.message}. Please try again.`);
+    } finally {
+      setIsSubmittingOrder(false);
     }
+  };
+
+  const handleSuccessModalClose = () => {
+    setOrderSuccessOpen(false);
+    setOrderDetails(null);
   };
 
   // Show loading state until cart is loaded
@@ -407,6 +438,15 @@ export default function TablePage() {
         onSubmitOrder={handleSubmitOrder}
         tableId={tableId}
         totalPrice={cartTotals.totalPrice}
+        totalItems={cartTotals.totalItems}
+        isSubmitting={isSubmittingOrder}
+      />
+
+      {/* Order Success Modal */}
+      <OrderSuccessModal
+        isOpen={orderSuccessOpen}
+        onClose={handleSuccessModalClose}
+        orderDetails={orderDetails}
       />
     </div>
   );
