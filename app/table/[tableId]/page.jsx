@@ -109,6 +109,7 @@ export default function TablePage() {
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
   const [orderConfirmationOpen, setOrderConfirmationOpen] = useState(false);
   const [cartTotals, setCartTotals] = useState({ totalItems: 0, totalPrice: 0 });
+  const [isIncreasing, setIsIncreasing] = useState(false); // New state to track if we're increasing quantity
 
   // Calculate cart totals whenever cart changes
   useEffect(() => {
@@ -120,12 +121,18 @@ export default function TablePage() {
       ...MENU_DATA.desserts
     ];
 
+    // Cart is now an array of items with different customizations
     const cartEntries = Object.entries(cart);
-    const totalItems = cartEntries.reduce((sum, [itemId, cartData]) => sum + cartData.quantity, 0);
-    const totalPrice = cartEntries.reduce((sum, [itemId, cartData]) => {
+    const totalItems = cartEntries.reduce((sum, [itemId, variations]) => {
+      return sum + variations.reduce((varSum, variation) => varSum + variation.quantity, 0);
+    }, 0);
+    
+    const totalPrice = cartEntries.reduce((sum, [itemId, variations]) => {
       const menuItem = allMenuItems.find(item => item.id === parseInt(itemId));
-      const price = cartData.customization?.price || menuItem?.price || 0;
-      return sum + (price * cartData.quantity);
+      return sum + variations.reduce((varSum, variation) => {
+        const price = variation.customization?.price || menuItem?.price || 0;
+        return varSum + (price * variation.quantity);
+      }, 0);
     }, 0);
 
     setCartTotals({ totalItems, totalPrice });
@@ -134,6 +141,7 @@ export default function TablePage() {
   const handleAddItem = (item) => {
     if (item.customizable) {
       setSelectedItem(item);
+      setIsIncreasing(false); // This is a new addition
       setDrawerOpen(true);
     } else {
       addToCart(item.id, { price: item.price });
@@ -144,43 +152,136 @@ export default function TablePage() {
     addToCart(itemId, customization);
     setDrawerOpen(false);
     setSelectedItem(null);
+    setIsIncreasing(false);
   };
 
   const addToCart = (itemId, customization) => {
-    setCart(prev => ({
-      ...prev,
-      [itemId]: {
-        ...prev[itemId],
-        quantity: (prev[itemId]?.quantity || 0) + 1,
-        customization
-      }
-    }));
-  };
-
-  const updateQuantity = (itemId, change) => {
     setCart(prev => {
-      const currentQuantity = prev[itemId]?.quantity || 0;
-      const newQuantity = currentQuantity + change;
+      const existingVariations = prev[itemId] || [];
       
-      if (newQuantity <= 0) {
-        const { [itemId]: removed, ...rest } = prev;
-        return rest;
+      // Find if this customization already exists
+      const existingVariationIndex = existingVariations.findIndex(variation => 
+        JSON.stringify(variation.customization) === JSON.stringify(customization)
+      );
+
+      if (existingVariationIndex >= 0) {
+        // Update existing variation
+        const updatedVariations = [...existingVariations];
+        updatedVariations[existingVariationIndex] = {
+          ...updatedVariations[existingVariationIndex],
+          quantity: updatedVariations[existingVariationIndex].quantity + 1
+        };
+        
+        return {
+          ...prev,
+          [itemId]: updatedVariations
+        };
+      } else {
+        // Add new variation
+        return {
+          ...prev,
+          [itemId]: [
+            ...existingVariations,
+            {
+              quantity: 1,
+              customization
+            }
+          ]
+        };
       }
-      
-      return {
-        ...prev,
-        [itemId]: {
-          ...prev[itemId],
-          quantity: newQuantity
-        }
-      };
     });
   };
 
-  const removeFromCart = (itemId) => {
+  const updateQuantity = (itemId, change, variationIndex = null) => {
+    const allMenuItems = [
+      ...MENU_DATA.drinks,
+      ...MENU_DATA.mains,
+      ...MENU_DATA.desserts
+    ];
+    
+    const menuItem = allMenuItems.find(item => item.id === parseInt(itemId));
+    
+    // If it's customizable and we're increasing, show customization drawer
+    if (menuItem?.customizable && change > 0) {
+      setSelectedItem(menuItem);
+      setIsIncreasing(true);
+      setDrawerOpen(true);
+      return;
+    }
+
     setCart(prev => {
-      const { [itemId]: removed, ...rest } = prev;
-      return rest;
+      const variations = prev[itemId] || [];
+      
+      if (variationIndex !== null) {
+        // Update specific variation
+        const updatedVariations = [...variations];
+        const newQuantity = updatedVariations[variationIndex].quantity + change;
+        
+        if (newQuantity <= 0) {
+          updatedVariations.splice(variationIndex, 1);
+        } else {
+          updatedVariations[variationIndex] = {
+            ...updatedVariations[variationIndex],
+            quantity: newQuantity
+          };
+        }
+        
+        if (updatedVariations.length === 0) {
+          const { [itemId]: removed, ...rest } = prev;
+          return rest;
+        }
+        
+        return {
+          ...prev,
+          [itemId]: updatedVariations
+        };
+      } else {
+        // For non-customizable items or decreasing
+        if (variations.length > 0) {
+          const updatedVariations = [...variations];
+          const newQuantity = updatedVariations[0].quantity + change;
+          
+          if (newQuantity <= 0) {
+            const { [itemId]: removed, ...rest } = prev;
+            return rest;
+          }
+          
+          updatedVariations[0] = {
+            ...updatedVariations[0],
+            quantity: newQuantity
+          };
+          
+          return {
+            ...prev,
+            [itemId]: updatedVariations
+          };
+        }
+        
+        return prev;
+      }
+    });
+  };
+
+  const removeFromCart = (itemId, variationIndex = null) => {
+    setCart(prev => {
+      if (variationIndex !== null) {
+        const variations = prev[itemId] || [];
+        const updatedVariations = [...variations];
+        updatedVariations.splice(variationIndex, 1);
+        
+        if (updatedVariations.length === 0) {
+          const { [itemId]: removed, ...rest } = prev;
+          return rest;
+        }
+        
+        return {
+          ...prev,
+          [itemId]: updatedVariations
+        };
+      } else {
+        const { [itemId]: removed, ...rest } = prev;
+        return rest;
+      }
     });
   };
 
@@ -283,6 +384,7 @@ export default function TablePage() {
         onClose={() => {
           setDrawerOpen(false);
           setSelectedItem(null);
+          setIsIncreasing(false);
         }}
         onConfirm={handleCustomizationConfirm}
       />

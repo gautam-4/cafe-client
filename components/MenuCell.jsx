@@ -3,7 +3,8 @@
 import QuantityControl from './QuantityControl';
 
 export default function MenuCell({ item, cartItem, onAddItem, onUpdateQuantity }) {
-  const quantity = cartItem?.quantity || 0;
+  // Calculate total quantity across all variations
+  const totalQuantity = cartItem ? cartItem.reduce((sum, variation) => sum + variation.quantity, 0) : 0;
   const isVeg = item.isVeg !== false;
 
   return (
@@ -37,7 +38,7 @@ export default function MenuCell({ item, cartItem, onAddItem, onUpdateQuantity }
 
         {/* Right Section */}
         <div className="flex flex-col items-end justify-center min-w-[90px]">
-          {quantity === 0 ? (
+          {totalQuantity === 0 ? (
             <button
               onClick={() => onAddItem(item)}
               className="text-sm font-medium px-4 py-1.5 rounded-md border border-gray-300 text-gray-800 hover:bg-gray-50 transition"
@@ -46,7 +47,7 @@ export default function MenuCell({ item, cartItem, onAddItem, onUpdateQuantity }
             </button>
           ) : (
             <QuantityControl
-              quantity={quantity}
+              quantity={totalQuantity}
               onDecrease={() => onUpdateQuantity(item.id, -1)}
               onIncrease={() => onUpdateQuantity(item.id, 1)}
             />

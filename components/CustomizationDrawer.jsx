@@ -26,12 +26,12 @@ export default function CustomizationDrawer({ isOpen, item, onClose, onConfirm }
     <>
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-black bg-opacity-50 z-40"
+        className="fixed inset-0 bg-black bg-opacity-50 z-[60]"
         onClick={onClose}
       />
       
       {/* Drawer */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white rounded-t-xl z-50 p-6 transform transition-transform duration-300">
+      <div className="fixed bottom-0 left-0 right-0 bg-white rounded-t-xl z-[70] p-6 transform transition-transform duration-300">
         <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
         
         <h3 className="text-lg font-semibold text-gray-800 mb-2">{item.name}</h3>

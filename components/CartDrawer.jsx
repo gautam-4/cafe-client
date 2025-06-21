@@ -15,13 +15,20 @@ export default function CartDrawer({ isOpen, onClose, cart, menuData, onUpdateQu
             ...menuData.desserts
         ];
 
-        const items = Object.entries(cart).map(([itemId, cartData]) => {
+        const items = [];
+        
+        Object.entries(cart).forEach(([itemId, variations]) => {
             const menuItem = allMenuItems.find(item => item.id === parseInt(itemId));
-            return {
-                ...menuItem,
-                quantity: cartData.quantity,
-                customization: cartData.customization
-            };
+            
+            variations.forEach((variation, variationIndex) => {
+                items.push({
+                    ...menuItem,
+                    quantity: variation.quantity,
+                    customization: variation.customization,
+                    variationIndex: variationIndex,
+                    itemId: parseInt(itemId)
+                });
+            });
         });
 
         setCartItems(items);
@@ -74,12 +81,12 @@ export default function CartDrawer({ isOpen, onClose, cart, menuData, onUpdateQu
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            {cartItems.map((item) => (
+                            {cartItems.map((item, index) => (
                                 <CartItem
-                                    key={item.id}
+                                    key={`${item.itemId}-${item.variationIndex}`}
                                     item={item}
-                                    onUpdateQuantity={(change) => onUpdateQuantity(item.id, change)}
-                                    onRemove={() => onRemoveItem(item.id)}
+                                    onUpdateQuantity={(change) => onUpdateQuantity(item.itemId, change, item.variationIndex)}
+                                    onRemove={() => onRemoveItem(item.itemId, item.variationIndex)}
                                 />
                             ))}
                         </div>
