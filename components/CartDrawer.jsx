@@ -124,7 +124,7 @@ export default function CartDrawer({
         {/* Footer with totals and confirm button */}
         {cartItems.length > 0 && (
           <div className="border-t border-gray-200 p-4 space-y-4 bg-white">
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
               <div className="flex justify-between items-center text-sm text-gray-600">
                 <span>Items ({totals.totalItems})</span>
                 <span>₹{totals.totalPrice.toFixed(2)}</span>
@@ -133,13 +133,14 @@ export default function CartDrawer({
                 <span>Total</span>
                 <span>₹{totals.totalPrice.toFixed(2)}</span>
               </div>
-            </div>
+            </div> */}
             <button
               onClick={handleConfirmOrder}
               className="w-full py-3 px-4 rounded-lg font-medium text-gray-800 transition-colors hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2"
               style={{ backgroundColor: 'var(--cozy-lemon)' }}
             >
-              Proceed to Checkout ({totals.totalItems} {totals.totalItems === 1 ? 'item' : 'items'})
+              Proceed 
+              {/* ({totals.totalItems} {totals.totalItems === 1 ? 'item' : 'items'}) */}
             </button>
           </div>
         )}

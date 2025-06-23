@@ -12,7 +12,7 @@ export default function CartSummary({ totalItems, totalPrice, onGoToCart }) {
           <div className="w-6 h-6 rounded-full bg-gray-800 text-white text-sm flex items-center justify-center">
             {totalItems}
           </div>
-          <span className="text-gray-800">View Cart</span>
+          <span className="text-gray-800">View Order</span>
         </div>
         <span className="text-gray-800 font-semibold">₹{totalPrice.toFixed(2)}</span>
       </button>
