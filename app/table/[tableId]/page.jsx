@@ -9,70 +9,36 @@ import CartDrawer from '../../../components/CartDrawer';
 import OrderConfirmationDrawer from '../../../components/OrderConfirmationDrawer';
 import OrderSuccessModal from '../../../components/OrderSuccessModal';
 import { createOrder, formatOrderForFirebase, validateOrderData } from '../../../lib/orderService';
-
-const MENU_DATA = {
-  drinks: [
-    { id: 1, name: 'Cold Coffee', price: 150, customizable: false, category: 'drinks' },
-    { id: 2, name: 'Iced Tea', price:100, customizable: true, category: 'drinks', options: [
-        {id: 'lemon', label: 'Lemon', price: 100},
-        {id: 'peach', label: 'Peach', price: 100}
-    ]},
-  ],
-  mains: [
-    { id: 3, name: 'Peppy Paneer Pizza', price: 250, customizable: true, category: 'mains', options: [
-      { id: 'small', label: 'Small (8")', price: 250 },
-      { id: 'medium', label: 'Medium (12")', price: 300 },
-      { id: 'large', label: 'Large (16")', price: 350 }
-    ], description: 'cheese, paneer, paprika'},
-    { id: 4, name: 'Grilled Chicken', price: 250, customizable: false, isVeg: false, category: 'mains' },
-    { id: 5, name: 'Pasta', price: 200, customizable: true, category: 'mains', options: [
-      { id: 'alfredo', label: 'Alfredo', price: 200 },
-      { id: 'full', label: 'Full Portion', price: 300 }
-    ]}
-  ],
-  desserts: [
-    { id: 6, name: 'Chocolate Cake', price: 150, customizable: true, category: 'desserts', options: [
-      { id: 'slice', label: 'Single Slice', price: 150 },
-      { id: 'double', label: 'Double Slice', price: 200 }
-    ]},
-    { id: 7, name: 'Ice Cream', price: 150, customizable: false, category: 'desserts' }
-  ]
-};
+import { fetchMenu, getAllMenuItems } from '../../../lib/menuService';
 
 // Custom hook for persistent cart state
 function usePersistedCart(tableId) {
   const [cart, setCart] = useState({});
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Generate unique storage key for each table
   const storageKey = `cafe-cart-table-${tableId}`;
 
-  // Load cart from localStorage on component mount
   useEffect(() => {
     try {
       const savedCart = localStorage.getItem(storageKey);
       if (savedCart) {
         const parsedCart = JSON.parse(savedCart);
-        // Validate the cart data structure
         if (typeof parsedCart === 'object' && parsedCart !== null) {
           setCart(parsedCart);
         }
       }
     } catch (error) {
       console.error('Error loading cart from localStorage:', error);
-      // Clear corrupted data
       localStorage.removeItem(storageKey);
     } finally {
       setIsLoaded(true);
     }
   }, [storageKey]);
 
-  // Save cart to localStorage whenever it changes
   useEffect(() => {
     if (isLoaded) {
       try {
         if (Object.keys(cart).length === 0) {
-          // Remove from localStorage if cart is empty
           localStorage.removeItem(storageKey);
         } else {
           localStorage.setItem(storageKey, JSON.stringify(cart));
@@ -103,7 +69,11 @@ export default function TablePage() {
   const params = useParams();
   const tableId = params.tableId;
   
-  // Use the custom hook for persistent cart
+  // Menu state
+  const [menuData, setMenuData] = useState(null);
+  const [isMenuLoading, setIsMenuLoading] = useState(true);
+  const [menuError, setMenuError] = useState(null);
+  
   const [cart, setCart, clearCart, isCartLoaded] = usePersistedCart(tableId);
   
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -116,17 +86,31 @@ export default function TablePage() {
   const [orderDetails, setOrderDetails] = useState(null);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
 
-  // Calculate cart totals whenever cart changes
+  // Fetch menu from Firestore
   useEffect(() => {
-    if (!isCartLoaded) return; // Don't calculate until cart is loaded
-    
-    const allMenuItems = [
-      ...MENU_DATA.drinks,
-      ...MENU_DATA.mains,
-      ...MENU_DATA.desserts
-    ];
+    async function loadMenu() {
+      try {
+        setIsMenuLoading(true);
+        const menu = await fetchMenu();
+        setMenuData(menu);
+        setMenuError(null);
+      } catch (error) {
+        console.error('Failed to load menu:', error);
+        setMenuError('Failed to load menu. Please refresh the page.');
+      } finally {
+        setIsMenuLoading(false);
+      }
+    }
 
-    // Cart is now an array of items with different customizations
+    loadMenu();
+  }, []);
+
+  // Calculate cart totals
+  useEffect(() => {
+    if (!isCartLoaded || !menuData) return;
+    
+    const allMenuItems = getAllMenuItems(menuData);
+
     const cartEntries = Object.entries(cart);
     const totalItems = cartEntries.reduce((sum, [itemId, variations]) => {
       return sum + variations.reduce((varSum, variation) => varSum + variation.quantity, 0);
@@ -141,12 +125,12 @@ export default function TablePage() {
     }, 0);
 
     setCartTotals({ totalItems, totalPrice });
-  }, [cart, isCartLoaded]);
+  }, [cart, isCartLoaded, menuData]);
 
   const handleAddItem = (item) => {
     if (item.customizable) {
       setSelectedItem(item);
-      setIsIncreasing(false); // This is a new addition
+      setIsIncreasing(false);
       setDrawerOpen(true);
     } else {
       addToCart(item.id, { price: item.price });
@@ -164,13 +148,11 @@ export default function TablePage() {
     setCart(prev => {
       const existingVariations = prev[itemId] || [];
       
-      // Find if this customization already exists
       const existingVariationIndex = existingVariations.findIndex(variation => 
         JSON.stringify(variation.customization) === JSON.stringify(customization)
       );
 
       if (existingVariationIndex >= 0) {
-        // Update existing variation
         const updatedVariations = [...existingVariations];
         updatedVariations[existingVariationIndex] = {
           ...updatedVariations[existingVariationIndex],
@@ -182,7 +164,6 @@ export default function TablePage() {
           [itemId]: updatedVariations
         };
       } else {
-        // Add new variation
         return {
           ...prev,
           [itemId]: [
@@ -198,15 +179,11 @@ export default function TablePage() {
   };
 
   const updateQuantity = (itemId, change, variationIndex = null) => {
-    const allMenuItems = [
-      ...MENU_DATA.drinks,
-      ...MENU_DATA.mains,
-      ...MENU_DATA.desserts
-    ];
+    if (!menuData) return;
     
+    const allMenuItems = getAllMenuItems(menuData);
     const menuItem = allMenuItems.find(item => item.id === parseInt(itemId));
     
-    // If it's customizable and we're increasing, show customization drawer
     if (menuItem?.customizable && change > 0) {
       setSelectedItem(menuItem);
       setIsIncreasing(true);
@@ -218,7 +195,6 @@ export default function TablePage() {
       const variations = prev[itemId] || [];
       
       if (variationIndex !== null) {
-        // Update specific variation
         const updatedVariations = [...variations];
         const newQuantity = updatedVariations[variationIndex].quantity + change;
         
@@ -241,7 +217,6 @@ export default function TablePage() {
           [itemId]: updatedVariations
         };
       } else {
-        // For non-customizable items or decreasing
         if (variations.length > 0) {
           const updatedVariations = [...variations];
           const newQuantity = updatedVariations[0].quantity + change;
@@ -294,32 +269,26 @@ export default function TablePage() {
     setCartDrawerOpen(true);
   };
 
-  // Updated to properly handle the cart data and open order confirmation
   const handleConfirmOrder = () => {
     setCartDrawerOpen(false);
     setOrderConfirmationOpen(true);
   };
 
-  // Updated to handle the actual order submission
   const handleSubmitOrder = async (customerDetails) => {
-    if (isSubmittingOrder) return; // Prevent double submission
+    if (isSubmittingOrder) return;
     
     setIsSubmittingOrder(true);
     
     try {
-      // Format order data for Firebase
-      const orderData = formatOrderForFirebase(cart, customerDetails, MENU_DATA);
+      const orderData = formatOrderForFirebase(cart, customerDetails, menuData);
       
-      // Validate order data
       const validation = validateOrderData(orderData);
       if (!validation.isValid) {
         throw new Error(validation.errors.join(', '));
       }
 
-      // Submit order to Firebase
       const orderId = await createOrder(orderData);
       
-      // Prepare success modal data
       const successData = {
         orderId,
         orderNumber: orderData.orderNumber,
@@ -332,11 +301,9 @@ export default function TablePage() {
       
       setOrderDetails(successData);
       
-      // Close confirmation drawer and show success modal
       setOrderConfirmationOpen(false);
       setOrderSuccessOpen(true);
       
-      // Clear cart after successful order
       clearCart();
       
     } catch (error) {
@@ -352,13 +319,46 @@ export default function TablePage() {
     setOrderDetails(null);
   };
 
-  // Show loading state until cart is loaded
-  if (!isCartLoaded) {
+  // Loading state
+  if (isMenuLoading || !isCartLoaded) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading menu...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (menuError) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center p-4">
+          <div className="text-red-500 mb-4">
+            <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <p className="text-gray-800 font-medium mb-2">{menuError}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600"
+          >
+            Refresh Page
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Empty menu state
+  if (!menuData || Object.keys(menuData).length === 0) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center p-4">
+          <p className="text-gray-600">No menu items available at the moment.</p>
         </div>
       </div>
     );
@@ -374,32 +374,19 @@ export default function TablePage() {
 
       {/* Menu Sections */}
       <div className="px-4 py-6 space-y-8" style={{ paddingBottom: cartTotals.totalItems > 0 ? '100px' : '24px' }}>
-        <MenuSection
-          title="Drinks"
-          items={MENU_DATA.drinks}
-          cart={cart}
-          onAddItem={handleAddItem}
-          onUpdateQuantity={updateQuantity}
-        />
-        
-        <MenuSection
-          title="Main Courses"
-          items={MENU_DATA.mains}
-          cart={cart}
-          onAddItem={handleAddItem}
-          onUpdateQuantity={updateQuantity}
-        />
-        
-        <MenuSection
-          title="Desserts"
-          items={MENU_DATA.desserts}
-          cart={cart}
-          onAddItem={handleAddItem}
-          onUpdateQuantity={updateQuantity}
-        />
+        {Object.entries(menuData).map(([categoryId, category]) => (
+          <MenuSection
+            key={categoryId}
+            title={category.name}
+            items={category.items}
+            cart={cart}
+            onAddItem={handleAddItem}
+            onUpdateQuantity={updateQuantity}
+          />
+        ))}
       </div>
 
-      {/* Cart Summary - Only show when there are items in cart */}
+      {/* Cart Summary */}
       {cartTotals.totalItems > 0 && (
         <CartSummary
           totalItems={cartTotals.totalItems}
@@ -425,7 +412,7 @@ export default function TablePage() {
         isOpen={cartDrawerOpen}
         onClose={() => setCartDrawerOpen(false)}
         cart={cart}
-        menuData={MENU_DATA}
+        menuData={menuData}
         onUpdateQuantity={updateQuantity}
         onRemoveItem={removeFromCart}
         onConfirmOrder={handleConfirmOrder}
