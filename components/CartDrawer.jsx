@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import CartItem from './CartItem';
+import { getAllMenuItems } from '../lib/menuService';
 
 export default function CartDrawer({ 
   isOpen, 
@@ -15,19 +16,14 @@ export default function CartDrawer({
   const [cartItems, setCartItems] = useState([]);
   const [totals, setTotals] = useState({ totalItems: 0, totalPrice: 0 });
 
-  // Convert cart object to array of items with full details
   useEffect(() => {
-    if (!menuData || !menuData.drinks || !menuData.mains || !menuData.desserts) {
+    if (!menuData) {
       setCartItems([]);
       setTotals({ totalItems: 0, totalPrice: 0 });
       return;
     }
 
-    const allMenuItems = [
-      ...menuData.drinks,
-      ...menuData.mains,
-      ...menuData.desserts
-    ];
+    const allMenuItems = getAllMenuItems(menuData);
 
     const items = [];
     
@@ -49,7 +45,6 @@ export default function CartDrawer({
 
     setCartItems(items);
 
-    // Calculate totals
     const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
     const totalPrice = items.reduce((sum, item) => {
       const price = item.customization?.price || item.price;
@@ -70,8 +65,6 @@ export default function CartDrawer({
       return;
     }
 
-    // Simply call the onConfirmOrder callback - no need to pass data
-    // The parent component already has access to the cart state
     onConfirmOrder();
   };
 
@@ -121,26 +114,15 @@ export default function CartDrawer({
           )}
         </div>
 
-        {/* Footer with totals and confirm button */}
+        {/* Footer with confirm button */}
         {cartItems.length > 0 && (
           <div className="border-t border-gray-200 p-4 space-y-4 bg-white">
-            {/* <div className="space-y-2">
-              <div className="flex justify-between items-center text-sm text-gray-600">
-                <span>Items ({totals.totalItems})</span>
-                <span>₹{totals.totalPrice.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between items-center font-semibold text-lg text-gray-800 pt-2 border-t border-gray-100">
-                <span>Total</span>
-                <span>₹{totals.totalPrice.toFixed(2)}</span>
-              </div>
-            </div> */}
             <button
               onClick={handleConfirmOrder}
               className="w-full py-3 px-4 rounded-lg font-medium text-gray-800 transition-colors hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2"
               style={{ backgroundColor: 'var(--cozy-lemon)' }}
             >
               Proceed 
-              {/* ({totals.totalItems} {totals.totalItems === 1 ? 'item' : 'items'}) */}
             </button>
           </div>
         )}
